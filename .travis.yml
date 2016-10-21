@@ -1,0 +1,29 @@
+language: android
+android:
+  components:
+  - build-tools-21.1.2
+  - android-12
+before_script:
+- cd java
+- echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> build.properties
+- echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> local.properties
+- echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> ant.properties
+- echo "sdk.dir=$ANDROID_HOME" >> local.properties
+script:
+- ant release
+after_success: >-
+  echo -e "machine github.com\nlogin galeksandrp\npassword $GITHUB_TOKEN" >> ~/.netrc
+  
+  git push origin -f $TRAVIS_COMMIT:deploy-release
+  
+  echo -n $DEPLOY_FILES | xargs -d ' ' -n1 -i bash -c 'curl -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: $(file -b --mime-type {})" --data-binary @{} "https://uploads.github.com/repos/$TRAVIS_REPO_SLUG/releases/4465079/assets?name=$(basename {})"'
+branches:
+  except:
+    - /^deploy-.*$/
+    - /^untagged-.*$/
+notifications:
+  email: false
+before_install:
+- openssl aes-256-cbc -K $encrypted_34cc2288df4a_key -iv $encrypted_34cc2288df4a_iv -in my-release-key.keystore.enc -out my-release-key.keystore -d
+env:
+- DEPLOY_FILES='bin/hackerskeyboard-release-unsigned.apk bin/hackerskeyboard-release.apk'
