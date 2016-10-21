@@ -1,0 +1,90 @@
+name: Android CI
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  # Build Tools 25.0.3 is the first release whose host tools are 64-bit (24.0.4
+  # and older cannot execute on current runners) that still ships `dx`, which
+  # the Ant rules call and build-tools >= 31 removed. `dx` needs JDK 8 because
+  # the rules compile with -source/-target 1.5.
+  BUILD_TOOLS: '25.0.3'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: {contents: write}
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # sdkmanager ships with cmdline-tools 12.0, which is compiled for Java 17
+      # (class file version 61), so the SDK has to be prepared before switching
+      # to the JDK 8 that the Ant rules and dx require.
+      - name: Set up JDK 17 for sdkmanager
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The action defaults to packages "tools platform-tools", and `tools` was
+      # removed from the SDK repository, so sdkmanager fails on it.
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      # Compile SDK comes from the project itself (java/project.properties: target=android-12).
+      - name: Install platform and build-tools
+        run: sdkmanager "build-tools;$BUILD_TOOLS" "platforms;$(sed -n 's/^target=//p' java/project.properties)"
+
+      - name: Set up JDK 8 for Ant
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      # java/build.xml imports $ANDROID_SDK_ROOT/tools/ant/build.xml. The `tools`
+      # package is no longer in the SDK index, but the r25.2.5 archive still
+      # carries the Ant rules and the jars they load (ant-tasks, sdklib, ...).
+      - name: Install legacy SDK tools (Ant rules)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/sdk-tools.zip" https://dl.google.com/android/repository/tools_r25.2.5-linux.zip
+          unzip -q "$RUNNER_TEMP/sdk-tools.zip" 'tools/ant/*' 'tools/lib/*.jar' 'tools/support/*' 'tools/source.properties' -d "$ANDROID_SDK_ROOT"
+
+      # The Ant rules read these properties from java/ant.properties; passing
+      # them as files keeps the passwords out of the ant command line.
+      - name: Configure ant
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > java/local.properties
+          echo "sdk.buildtools=$BUILD_TOOLS" >> java/ant.properties
+
+      - name: Configure signing
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          cat >> java/ant.properties <<EOF
+          key.store=$RUNNER_TEMP/release.keystore
+          key.alias=$KEY_ALIAS
+          key.store.password=$KEYSTORE_PASSWORD
+          key.alias.password=$KEY_PASSWORD
+          EOF
+
+      - name: Build release APK
+        working-directory: java
+        run: ant release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hackerskeyboard-apk
+          path: java/bin/*.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: vlatest
+          files: java/bin/*.apk
+          fail_on_unmatched_files: true
