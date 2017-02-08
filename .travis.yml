@@ -1,8 +1,9 @@
 script:
-- echo TEST
+- git remote add upstream https://github.com/klausw/hackerskeyboard.git
+- git fetch upstream master
+- git push origin upstream/master:master
 branches:
   except:
     - /^deploy-.*$/
-    - /^untagged-.*$/
 notifications:
   email: false
