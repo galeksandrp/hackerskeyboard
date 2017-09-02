@@ -11,15 +11,24 @@ before_script:
 - echo "sdk.dir=$ANDROID_HOME" >> local.properties
 script:
 - ant release
-after_success: >-
-  echo -e "machine github.com\nlogin galeksandrp\npassword $GITHUB_TOKEN" >> ~/.netrc
-  
-  git push origin -f $TRAVIS_COMMIT:deploy-release
-  
-  echo -n $DEPLOY_FILES | xargs -d ' ' -n1 -i bash -c 'curl -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: $(file -b --mime-type {})" --data-binary @{} "https://uploads.github.com/repos/$TRAVIS_REPO_SLUG/releases/4465079/assets?name=$(basename {})"'
+before_deploy:
+  - echo -e "machine github.com\nlogin galeksandrp\npassword $GITHUB_TOKEN" >> ~/.netrc
+  - git tag -f v$(echo -e 'setrootns\nxpath string(/manifest/@android:versionName)' | xmllint --shell java/AndroidManifest.xml | head -n1 | cut -d ':' -f 2 | tr -d ' ')-$TRAVIS_BRANCH-deploy
+  - git push origin -f v$(echo -e 'setrootns\nxpath string(/manifest/@android:versionName)' | xmllint --shell java/AndroidManifest.xml | head -n1 | cut -d ':' -f 2 | tr -d ' ')-$TRAVIS_BRANCH-deploy
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  skip_cleanup: true
+  file: 
+  - bin/*.apk
+  file_glob: true
+  overwrite: true
+  on:
+    all_branches: true
 branches:
   except:
     - /^deploy-.*$/
+    - /^.*-deploy$/
     - /^untagged-.*$/
 notifications:
   email: false
