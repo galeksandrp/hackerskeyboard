@@ -7,6 +7,7 @@ addons:
   apt:
     packages:
     - ant
+    - libxml2-utils
 before_script:
 - cd java
 - echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> build.properties
