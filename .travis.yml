@@ -3,6 +3,10 @@ android:
   components:
   - build-tools-21.1.2
   - android-12
+addons:
+  apt:
+    packages:
+    - ant
 before_script:
 - cd java
 - echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> build.properties
@@ -34,5 +38,3 @@ notifications:
   email: false
 before_install:
 - openssl aes-256-cbc -K $encrypted_34cc2288df4a_key -iv $encrypted_34cc2288df4a_iv -in my-release-key.keystore.enc -out my-release-key.keystore -d
-env:
-- DEPLOY_FILES='bin/hackerskeyboard-release-unsigned.apk bin/hackerskeyboard-release.apk'
