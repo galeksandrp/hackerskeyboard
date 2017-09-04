@@ -7,7 +7,7 @@ addons:
   apt:
     packages:
     - ant
-    - libxml2-utils
+    - xmlstarlet
 before_script:
 - cd java
 - echo -e "key.store=$TRAVIS_BUILD_DIR/my-release-key.keystore\nkey.alias=alias_name\nkey.store.password=$KEYSTORE_PASS\nkey.alias.password=$KEYSTORE_PASS" >> build.properties
@@ -18,8 +18,8 @@ script:
 - ant release
 before_deploy:
   - echo -e "machine github.com\nlogin galeksandrp\npassword $GITHUB_TOKEN" >> ~/.netrc
-  - git tag -f $(echo -e 'setrootns\nxpath string(/manifest/@android:versionName)' | xmllint --shell $TRAVIS_BUILD_DIR/java/AndroidManifest.xml | head -n1 | cut -d ':' -f 2 | tr -d ' ')-$TRAVIS_BRANCH-deploy
-  - git push origin -f $(echo -e 'setrootns\nxpath string(/manifest/@android:versionName)' | xmllint --shell $TRAVIS_BUILD_DIR/java/AndroidManifest.xml | head -n1 | cut -d ':' -f 2 | tr -d ' ')-$TRAVIS_BRANCH-deploy
+  - git tag -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
+  - git push origin -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
 deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
