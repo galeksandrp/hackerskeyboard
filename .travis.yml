@@ -18,8 +18,8 @@ script:
 - ant release
 before_deploy:
   - echo -e "machine github.com\nlogin galeksandrp\npassword $GITHUB_TOKEN" >> ~/.netrc
-  - git tag -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
-  - git push origin -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
+  - git tag -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' $TRAVIS_BUILD_DIR/java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
+  - git push origin -f $(xmlstarlet sel -t -v '/manifest/@android:versionName' $TRAVIS_BUILD_DIR/java/AndroidManifest.xml)-$TRAVIS_BRANCH-deploy
 deploy:
   provider: releases
   api_key: $GITHUB_TOKEN
